@@ -22,7 +22,7 @@ async function zipFixture(root, entries, filename = 'synthetic-protocol-only.zip
   const spec = path.join(root, `${filename}.json`);
   const archive = path.join(root, filename);
   await fs.writeFile(spec, JSON.stringify(entries));
-  const script = 'import json,sys,zipfile,base64; entries=json.load(open(sys.argv[1])); z=zipfile.ZipFile(sys.argv[2],"w"); [(lambda i,e: (setattr(i,"external_attr",e.get("mode",0o100600)<<16),z.writestr(i,base64.b64decode(e["base64"]) if "base64" in e else e.get("data","synthetic protocol fixture"))))(zipfile.ZipInfo(e["name"]),e) for e in entries]; z.close()';
+  const script = 'import json,sys,zipfile,base64; entries=json.load(open(sys.argv[1],encoding="utf-8")); z=zipfile.ZipFile(sys.argv[2],"w"); [(lambda i,e: (setattr(i,"external_attr",e.get("mode",0o100600)<<16),z.writestr(i,base64.b64decode(e["base64"]) if "base64" in e else e.get("data","synthetic protocol fixture"))))(zipfile.ZipInfo(e["name"]),e) for e in entries]; z.close()';
   await runProcess(await python(), ['-I', '-c', script, spec, archive], { cwd: root });
   return archive;
 }

@@ -39,6 +39,7 @@ test('Windows child PATH has one spelling and preserves managed precedence witho
     Object.defineProperty(process, 'platform', { value: 'win32' });
     process.env.Path = 'system-path';
     process.env.PATH = 'inherited-path';
+    const inheritedPathVariant = process.env.Path;
     const { childEnvironment } = require(${JSON.stringify(path.resolve(__dirname, '../src/engine/process'))});
     for (const additions of [{ PATH: 'managed-path' }, { Path: 'managed-path' }]) {
       const result = childEnvironment(process.cwd(), additions);
@@ -46,7 +47,7 @@ test('Windows child PATH has one spelling and preserves managed precedence witho
       assert.equal(result.PATH, 'managed-path');
     }
     assert.equal(process.env.PATH, 'inherited-path');
-    assert.equal(process.env.Path, 'system-path');
+    assert.equal(process.env.Path, inheritedPathVariant);
   `;
   await runProcess(process.execPath, ['-e', script], { cwd: root });
 });
