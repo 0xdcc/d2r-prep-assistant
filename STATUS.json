@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "date": "2026-10-17",
+  "upstream": { "status": "PINNED_PARENT_VERIFIED", "commit": "9de307ecaff42b3c9d45e58992c848ee89b8f6a1", "product": "3.3.94012-r44", "targets": ["ios18", "ios26"] },
+  "engine": "IMPLEMENTED_41_TESTS_PASS_0_SKIPPED",
+  "renderer": "REAL_WINDOWS_ELECTRON_UI_SMOKE_PASS_TEST_BRIDGE_IN_TESTS_ONLY",
+  "environment": { "automatic": ["portable Python 3.12", "five hash-locked wheels", ".NET SDK 10", "Windows LLVM-MinGW", "CMake/Ninja and pinned SPIRV-Cross source build"], "macCompiler": "APPLE_COMMAND_LINE_TOOLS_REQUIRED", "windowsParentToolchainQA": "ACTUAL_APP_ENVIRONMENT_ENGINE_PASS_COLD_TOOLS_AND_WARM_CACHE", "windowsPythonChildPath": "PASS_CLANG_DOTNET_SPIRV_CROSS_PRIVATE_PATH", "networkQualification": "PUBLISHER_HASH_VERIFIED_PRESEEDED_ARCHIVES_NOT_FULL_COLD_NETWORK" },
+  "verification": { "programs": "THREE_UPSTREAM_SHA256", "resources": "PRESENCE_NONZERO_PSV_EXTENTS_NOT_FULL_CRYPTOGRAPHIC_AUTHENTICITY", "output": "REAL_PACK_INFO_PRODUCT_SHELL_METADATA_MANIFEST_PLIST_MACHO_CRC" },
+  "gameBuild": "NOT_TESTED_NO_OWN_GAME_FILES",
+  "deviceExecution": "NOT_TESTED",
+  "macNativeExecution": "NOT_TESTED_NO_MAC",
+  "nativeMacGameBackend": "NOT_IMPLEMENTED_V0_1",
+  "legacyTextureBackend": "NOT_IMPLEMENTED_V0_1",
+  "desktopPackaging": "BUILT_UNSIGNED_WIN32_X64_DARWIN_ARM64",
+  "packagedWindowsUI": "PASS_REAL_WINDOWS_BOOTSTRAP_LANGUAGE_NAVIGATION_IPC_ZERO_ERRORS",
+  "signing": "UNSIGNED_NOT_NOTARIZED",
+  "syntheticFixtures": "TEST_ONLY_PROTOCOL_NOT_GAME_OR_PLAYABLE_OUTPUT"
+}

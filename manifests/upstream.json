@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "status": "verified",
+  "repository": "https://github.com/jhaizhou-ops/d2r-mobile",
+  "release": {
+    "tag": "v1.0.17",
+    "sourceCommit": "9de307ecaff42b3c9d45e58992c848ee89b8f6a1",
+    "sourceRoot": "d2r-mobile-9de307ecaff42b3c9d45e58992c848ee89b8f6a1",
+    "sourceLicense": "LICENSE",
+    "packScript": "dm/tools/d2rm_pack.py",
+    "source": {
+      "url": "https://codeload.github.com/jhaizhou-ops/d2r-mobile/zip/9de307ecaff42b3c9d45e58992c848ee89b8f6a1",
+      "sha256": "fc7ba5fcc1f1004a5bc8a086a201371dd4eb2fffd5e9c76fc396d0585ca1381a",
+      "bytes": 6114175,
+      "license": "MIT"
+    },
+    "game": {
+      "version": "1.0.34.0",
+      "internalVersion": "3.3.94012",
+      "expansion": true,
+      "programs": [
+        { "path": "ExeFS/main", "sha256": "55fd909bb7230b002357e5b0d8499c11f06888f345c49e69eb4734df44a27d0e" },
+        { "path": "ExeFS/sdk", "sha256": "1c9f198a91c0bcfee5cf8f5b53fb941895e91334dfb766ce79fc68576797f017" },
+        { "path": "ExeFS/subsdk0", "sha256": "67a38fcf89cd13e040a021eb3d157072f38ebf6680a907874c35c7b231b5d4e2" }
+      ],
+      "resources": ["00-00000001.data", "00-00000002.data", "00-00000003.data", "00-00000004.data", "00-00000005.data", "00-00000006.data", "01-00000001.data", "01-00000002.data", "02-00000001.data", "02-00000002.data", "03-00000001.data", "03-00000002.data", "04-00000001.data", "04-00000002.data", "05-00000001.data", "05-00000002.data", "17-00000001.data", "17-00000002.data"]
+    },
+    "shellInfo": { "PRODUCT": "3.3.94012-r44", "CHAIN": "ca276ee824f1", "KIND": "ios", "SHADER_SRC": "58f99c2ccd5d8661", "SPIRV_CROSS": "1.4.357.0" },
+    "shellManifest": ["msl/b-ca276ee824f1/", "romfs_overlay/", "romfs_overlay_variants/", "hud_v4_ui/", "mapgoal/", "dm/main.fixups.tsv", "dm/sdk.fixups.tsv", "dm/main.gates.tsv", "dm/sdk.gates.tsv", "dm/main.cuts.tsv", "dm/c1_full.tsv", "dm_native_circle.png", "dm_native_map.png", "dm_native_menu.png", "dm_native_skill_0.png", "dm_native_skill_1.png", "dm_native_skill_2.png", "dm_native_skill_3.png", "dm_native_skill_4.png", "dm_native_skill_5.png", "dm_native_skill_6.png", "dm_native_skill_7.png", "dm_native_skill_8.png", "native_art_manifest.json", "dm/derived.tsv", "Frameworks/Guest.framework/"],
+    "python": {
+      "minimum": "3.9",
+      "requirements": [
+        { "name": "pillow", "version": "11.3.0" },
+        { "name": "numpy", "version": "2.2.6" },
+        { "name": "lz4", "version": "4.4.4" },
+        { "name": "capstone", "version": "5.0.6" },
+        { "name": "unicorn", "version": "2.1.4" }
+      ]
+    },
+    "dotnetSdkPrefix": "10.",
+    "spirvVersionIncludes": "1.4.357.0"
+  },
+  "targets": [
+    {
+      "id": "ios18",
+      "minimumOS": "18.0",
+      "shell": { "url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.17/D2RMobile-shell-ios18-build-input.zip", "sha256": "fb13cbcbb57905431faa313c8f9c336e1c011014ef1726933bf8021c15c4fbf9", "bytes": 4521895, "license": "MIT", "cleanShell": true }
+    },
+    {
+      "id": "ios26",
+      "minimumOS": "26.0",
+      "shell": { "url": "https://github.com/jhaizhou-ops/d2r-mobile/releases/download/v1.0.17/D2RMobile-shell-build-input.zip", "sha256": "d99910a4d5df534508480ddf69f779ddd98b72405c9427e635bed3e84e9adce8", "bytes": 4523705, "license": "MIT", "cleanShell": true }
+    }
+  ],
+  "portableTools": []
+}

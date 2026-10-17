@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>D2R Prep Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">D<span>↗</span></span><div>D2R <strong>PREP</strong><small>LOCAL DESKTOP ASSISTANT</small></div></div>
+    <div class="workspace-label" data-i18n="workspace">准备工作台</div>
+    <nav aria-label="Steps" id="steps">
+      <button class="step active" data-step="0"><span class="step-number">01</span><span><b data-i18n="step0">设备与输出</b><small data-i18n="step0sub">从目的地开始</small></span></button>
+      <button class="step" data-step="1"><span class="step-number">02</span><span><b data-i18n="step1">你的游戏文件</b><small data-i18n="step1sub">始终留在本机</small></span></button>
+      <button class="step" data-step="2"><span class="step-number">03</span><span><b data-i18n="step2">环境检查</b><small data-i18n="step2sub">先确认，再准备</small></span></button>
+      <button class="step" data-step="3"><span class="step-number">04</span><span><b data-i18n="step3">准备与结果</b><small data-i18n="step3sub">可追溯的本地任务</small></span></button>
+    </nav>
+    <div class="sidebar-bottom"><span class="privacy-dot"></span><b data-i18n="local">本地运行 · 无上传</b><p data-i18n="localSub">没有账号，没有云端游戏文件。<br>你的存档始终不在处理范围内。</p><div class="version">v0.1.0 <span>UNSIGNED PREVIEW</span></div></div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar"><span class="crumb">D2R Prep Assistant <span>/</span> <b id="crumb-step">设备与输出</b></span><div class="top-actions"><span id="host-pill" class="pill">LOCAL</span><button id="language" class="language" aria-label="Switch language">EN / 中文</button></div></header>
+    <main>
+      <div class="eyebrow" data-i18n="eyebrow">YOUR FILES. YOUR DEVICE.</div>
+      <h1 id="page-title">下一站，你的设备。</h1>
+      <p id="page-subtitle" class="subtitle">选择准备目标，让后面的每一步都有据可依。</p>
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+      <section id="panel-0" class="panel">
+        <div class="section-heading"><h2 data-i18n="destination">准备什么？</h2><span class="small-label" data-i18n="outputs">输出类型</span></div>
+        <div class="target-grid">
+          <div class="target-card selected"><div class="card-top"><span class="device-icon" aria-hidden="true">▯</span><span class="tag" data-i18n="firstRelease">首发工作流</span></div><h3>iPhone / iPad</h3><p data-i18n="ipaDesc">从自有文件准备 IPA，完成后单独签名安装。</p><div class="card-foot"><span>.ipa</span><span>Windows + macOS</span></div></div>
+          <div class="target-card unavailable"><div class="card-top"><span class="device-icon" aria-hidden="true">▱</span><span class="tag neutral" data-i18n="notAvailable">暂不可用</span></div><h3 data-i18n="nativeMac">原生 Mac 应用</h3><p id="mac-reason"></p><div class="card-foot"><span>.app</span><span>Apple silicon · Xcode</span></div></div>
+        </div>
+        <div class="field-row"><div class="field"><label for="target" data-i18n="systemTarget">iOS 目标版本</label><select id="target"><option value="ios26">iOS 26</option><option value="ios18">iOS 18</option></select><small data-i18n="targetNote">匹配 v1.0.17 的固定源码与干净壳，不使用社区成品 IPA。</small></div><div class="field"><label for="device" data-i18n="deviceLabel">设备兼容性参考</label><select id="device"><option value="current" data-i18n="currentDevice">支持 BC 贴图的较新设备 · 请核对上游兼容性</option><option value="legacy" data-i18n="legacyDevice">A14–A16 · ≥6GB（本版未实现 Legacy 工作流）</option><option value="unsupported" data-i18n="unsupportedDevice">iPhone 13 4GB / A12Z · 不支持</option></select><small id="device-note"></small></div></div>
+        <div class="folder-card"><div><h3 data-i18n="outputFolder">输出文件夹</h3><p id="output-path" class="path" data-i18n="notSelected">尚未选择</p></div><button class="button secondary" id="choose-output" data-i18n="chooseFolder">选择文件夹</button></div>
+        <div class="inline-note"><span aria-hidden="true">↳</span><span data-i18n="noOverwrite">每次生成唯一文件名，不覆盖已有 IPA。准备完成不等于已签名。</span></div>
+      </section>
+      <section id="panel-1" class="panel" hidden>
+        <div class="source-banner"><span class="file-glyph" aria-hidden="true">▤</span><div><h2 data-i18n="ownFiles">使用你自己的文件</h2><p data-i18n="ownNotice">只读取合法持有的游戏文件，不提供游戏下载，不处理存档。</p></div></div>
+        <div class="folder-card"><div><h3 data-i18n="inputFolder">ExeFS + RomFS 的父文件夹</h3><p id="input-path" class="path" data-i18n="notSelected">尚未选择</p></div><button class="button secondary" id="choose-input" data-i18n="chooseFolder">选择文件夹</button></div>
+        <div class="details-grid"><div class="info-box"><h3 data-i18n="requiredLayout">需要的目录结构</h3><pre>your-own-files/
+  ExeFS/
+    main
+    sdk
+    subsdk0
+  RomFS/
+    data/build_manifest.psv
+    data/*.data</pre><p data-i18n="layoutNote">不接受 NSP、XCI、下载链接或现成 IPA。</p></div><div class="info-box"><h3 data-i18n="strictVersion">精确版本，不是勾选承诺</h3><p data-i18n="versionInfo">Switch 1.0.34.0 · 内部 3.3.94012 + 资料片。核对三个程序的上游 SHA-256、18 个资源档案存在且非空，以及 PSV 清单引用范围。上游未公布完整资源哈希，资源不标为密码学验证。</p><p data-i18n="privateCopy">仅将需要的文件复制到应用工作区，原始文件夹不会传给上游脚本。软链接、硬链接和重叠路径将被拒绝。</p></div></div>
+      </section>
+      <section id="panel-2" class="panel" hidden>
+        <div class="section-heading"><h2 data-i18n="preflightTitle">在开始之前，确认一遍。</h2><button id="check" class="button secondary" data-i18n="runCheck">运行检查</button></div>
+        <div id="preflight-summary" class="info-box"><p data-i18n="checkIntro">检查真实依赖、输入版本、目录安全和可用空间。IPA 的无 Metal 路线不强制要求 Xcode；首次手机启动会编译着色器。</p></div>
+        <div id="dependencies" class="dependencies"></div>
+        <div class="info-box environment-box"><div><h3 data-i18n="prepareEnv">准备隔离环境</h3><p data-i18n="envNote">自动准备应用专用 Python 3.12、固定版本与哈希的五个 wheel、.NET 10；Windows 缺编译器时下载 LLVM-MinGW。用固定 CMake/Ninja 编译 SPIRV-Cross（最多两线程）。Mac 缺 Apple 命令行工具时需自行通过官方安装提示安装。不改全局环境。</p></div><label class="consent"><input type="checkbox" id="env-consent"><span data-i18n="envConsent">允许下载固定发布者的便携工具与 PyPI wheel（约 0.8–1 GB），并在本机编译 SPIRV-Cross</span></label><button id="prepare-environment" class="button secondary" data-i18n="prepareEnvButton">准备环境</button></div>
+        <p class="small-note" id="cache-path"></p>
+      </section>
+      <section id="panel-3" class="panel" hidden>
+        <div class="info-box"><h2 data-i18n="readyTitle">可检查的过程，才值得开始。</h2><p data-i18n="runIntro">固定源码与干净壳 → 隔离复制 → 真实上游打包器（首次 .NET 构建可能联网恢复 NuGet 依赖）→ 检查 pack_info、壳清单、可执行文件与 CRC → SHA-256 → 发布唯一 IPA。</p><label class="consent"><input type="checkbox" id="build-consent"><span data-i18n="buildConsent">允许下载固定源码与干净壳，以及上游 .NET 构建所需 NuGet 依赖；不下载游戏内容。</span></label><div class="run-controls"><button id="prepare" class="button primary" data-i18n="startPrepare">开始本地准备 ↗</button><button id="cancel" class="button danger" data-i18n="cancel" disabled>取消任务</button><button id="export-log" class="button text-button" data-i18n="exportLog">导出脱敏日志</button></div></div>
+        <div id="job-card" class="job-card" aria-live="polite"><div class="section-heading"><h3 id="job-status" data-i18n="idle">尚未开始</h3><span id="job-count" class="small-label"></span></div><progress id="progress" max="1" value="0" aria-label="Actual stage progress"></progress><p id="job-detail" class="small-note" data-i18n="realProgress">进度来自真实阶段事件，不提供虚构倒计时。</p></div>
+        <div id="result" class="result" hidden><h2 data-i18n="verifiedResult">IPA 已验证，等待签名。</h2><p id="result-path" class="path"></p><label>SHA-256</label><pre id="result-hash"></pre><div class="run-controls"><button id="reveal" class="button secondary" data-i18n="showFile">在文件管理器中显示</button><button data-help="signing" class="button secondary" data-i18n="signing">打开 Sideloadly 官方网站 ↗</button></div><p data-i18n="signingNote">签名独立进行。本助手不读取 Apple ID，不承诺免费永久证书。首次启动编译着色器。还需将自有的 18 个 .data 资源档案单独拷进手机 App 的文件夹；IPA 不包含这些完整档案。</p></div>
+        <details class="log-details"><summary data-i18n="logs">任务日志（本地 · 已脱敏）</summary><pre id="logs" role="log" aria-live="off"></pre></details>
+      </section>
+      <footer class="wizard-footer"><span class="footer-note" data-i18n="footer">原件不动。过程透明。结果可验证。</span><div><button id="back" class="button text-button" data-i18n="back">上一步</button><button id="next" class="button primary" data-i18n="next">继续 →</button></div></footer>
+    </main>
+    <div class="bottom-bar"><span data-i18n="preview">未签名预览版 · 游戏构建未经实际自有文件测试</span><button data-help="upstream" data-i18n="upstream" class="text-link">上游项目 ↗</button></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "d2r-prep-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only preparation wizard for user-owned D2R files",
+  "license": "MIT",
+  "author": "@0xdcc",
+  "main": "src/main.js",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "electron .",
+    "test": "node scripts/test.js",
+    "check": "node scripts/check.js",
+    "package:win": "node scripts/package.js win32 x64",
+    "package:mac": "node scripts/package.js darwin arm64",
+    "package:mac:x64": "node scripts/package.js darwin x64",
+    "review:runtime": "node scripts/install-runtime.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.9.0"
+  }
+}
