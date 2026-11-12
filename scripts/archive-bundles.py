@@ -6,7 +6,7 @@ artifacts=root/'artifacts'
 rows=[]
 for platform in ('win32-x64','darwin-arm64'):
     folder=artifacts/f'D2R Prep Assistant-{platform}'
-    output=artifacts/f'D2R-Prep-Assistant-0.1.0-{platform}-unsigned.zip'
+    output=artifacts/f'D2R-Prep-Assistant-0.2.0-{platform}-unsigned.zip'
     count=0
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=1,allowZip64=True) as z:
         for base,dirs,files in os.walk(folder,followlinks=False):

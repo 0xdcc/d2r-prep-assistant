@@ -24,7 +24,22 @@ async function setup() {
   const translations = [...html.matchAll(/data-i18n="([^"]+)"[^>]*>([^<]*)/g)].map(match => { const element = new Element({ i18n: match[1] }); element.textContent = match[2]; return element; });
   const steps = [0, 1, 2, 3].map(index => new Element({ step: String(index) }));
   const document = { documentElement: {}, getElementById: id => { assert(ids.has(id), `unknown HTML ID ${id}`); return ids.get(id); }, querySelectorAll: selector => selector === '[data-i18n]' ? translations : selector === '[data-step]' ? steps : [], createElement: () => new Element() };
-  const bridge = testBridge({ platform: 'win32', arch: 'x64', cache: '/synthetic/cache', matrix: { hostSupported: true, targets: [{ id: 'ios18', enabled: true }, { id: 'ios26', enabled: true }], nativeMac: { reason: 'not in v0.1' } }, state: { status: 'idle' } });
+  const bridge = testBridge({
+    platform: 'win32',
+    arch: 'x64',
+    cache: '/synthetic/cache',
+    matrix: {
+      hostSupported: true,
+      targets: [
+        { id: 'ios18', enabled: true },
+        { id: 'ios26', enabled: true },
+        { id: 'legacy-pack', enabled: true },
+        { id: 'android', enabled: true }
+      ],
+      nativeMac: { reason: 'not in v0.2' }
+    },
+    state: { status: 'idle' }
+  });
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer/app.js'), 'utf8'), { window: { prep: bridge.bridge }, document, console });
   await new Promise(resolve => setImmediate(resolve));
   return { ids, bridge, document, steps };
@@ -79,4 +94,43 @@ test('environment and preflight running jobs expose visible, usable cancel contr
   bridge.emit({ type: 'state', kind: 'prepare', status: 'failed', message: 'publication failed', recoveryPath: '/synthetic/job/prepared.ipa' });
   assert.match(ids.get('job-detail').textContent, /\/synthetic\/job\/prepared\.ipa/);
   assert.equal(ids.get('result').hidden, true);
+});
+
+test('wizard enables legacy device mode and hides device selector for legacy-pack and android targets', async () => {
+  const { ids, bridge } = await setup();
+  await ids.get('choose-output').click();
+
+  // Standard IPA with legacy device
+  ids.get('target').value = 'ios26';
+  ids.get('device').value = 'legacy';
+  await ids.get('device').listeners.change();
+  assert.equal(ids.get('device-field').hidden, false);
+  assert.equal(ids.get('next').disabled, false);
+
+  // Unsupported device blocks next
+  ids.get('device').value = 'unsupported';
+  await ids.get('device').listeners.change();
+  assert.equal(ids.get('next').disabled, true);
+
+  // legacy-pack hides device field and enables next
+  ids.get('target').value = 'legacy-pack';
+  await ids.get('target').listeners.change();
+  assert.equal(ids.get('device-field').hidden, true);
+  assert.equal(ids.get('next').disabled, false);
+
+  // android hides device field and enables next
+  ids.get('target').value = 'android';
+  await ids.get('target').listeners.change();
+  assert.equal(ids.get('device-field').hidden, true);
+  assert.equal(ids.get('next').disabled, false);
+
+  // Verify startJob passes device when legacy is active on IPA
+  ids.get('target').value = 'ios18';
+  ids.get('device').value = 'legacy';
+  await ids.get('target').listeners.change();
+  await ids.get('choose-input').click();
+  await ids.get('check').click();
+  const call = bridge.calls.findLast(item => item.method === 'startJob');
+  assert.equal(call.payload.target, 'ios18');
+  assert.equal(call.payload.device, 'legacy');
 });

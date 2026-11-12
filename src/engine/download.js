@@ -10,7 +10,7 @@ const { assert } = require('./errors');
 async function request(url, signal, fetcher) {
   let current = checkedUrl(url).href;
   for (let count = 0; count <= 4; count += 1) {
-    const response = await fetcher(current, { redirect: 'manual', signal, headers: { 'User-Agent': 'D2RPrepAssistant/0.1', 'Accept-Encoding': 'identity' } });
+    const response = await fetcher(current, { redirect: 'manual', signal, headers: { 'User-Agent': 'D2RPrepAssistant/0.2', 'Accept-Encoding': 'identity' } });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get('location');
       await response.body?.cancel();

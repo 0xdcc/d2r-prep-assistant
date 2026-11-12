@@ -141,13 +141,56 @@ async function publishFile(staged, outputDirectory, filename, signal) {
   return destination;
 }
 
+async function publishDirectory(staged, outputDirectory, folderName, signal) {
+  assert(path.basename(folderName) === folderName && /^[a-zA-Z0-9_.-]+$/.test(folderName), 'OUTPUT_NAME', 'Invalid output directory name.');
+  await directory(outputDirectory);
+  const destination = path.join(outputDirectory, folderName);
+  signal?.throwIfAborted();
+  try {
+    await fs.mkdir(destination, { mode: 0o755 });
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      const err = new Error('Destination folder already exists.');
+      err.code = 'EEXIST';
+      err.recoveryPath = staged;
+      throw err;
+    }
+    error.recoveryPath = staged;
+    throw error;
+  }
+  try {
+    async function copyEntry(srcDir, dstDir) {
+      const entries = await fs.readdir(srcDir, { withFileTypes: true });
+      for (const entry of entries) {
+        signal?.throwIfAborted();
+        const srcPath = path.join(srcDir, entry.name);
+        const dstPath = path.join(dstDir, entry.name);
+        if (entry.isDirectory()) {
+          await fs.mkdir(dstPath, { mode: 0o755 });
+          await copyEntry(srcPath, dstPath);
+        } else if (entry.isFile()) {
+          await copyExclusive(srcPath, dstPath, signal);
+        }
+      }
+    }
+    await copyEntry(staged, destination);
+    return destination;
+  } catch (error) {
+    await fs.rm(destination, { recursive: true, force: true });
+    error.recoveryPath = staged;
+    throw error;
+  }
+}
+
 async function cleanupWorkspace(workspace, recoveryPath) {
   if (recoveryPath) {
-    assert(path.dirname(recoveryPath) === workspace, 'RECOVERY_PATH', 'Recovery file must remain inside its job workspace.');
+    const relative = path.relative(workspace, recoveryPath);
+    assert(!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative), 'RECOVERY_PATH', 'Recovery path must remain inside its job workspace.');
+    const topEntry = relative.split(path.sep)[0];
     for (const entry of await fs.readdir(workspace)) {
-      if (path.join(workspace, entry) !== recoveryPath) await fs.rm(path.join(workspace, entry), { recursive: true, force: true, maxRetries: 3 });
+      if (entry !== topEntry) await fs.rm(path.join(workspace, entry), { recursive: true, force: true, maxRetries: 3 });
     }
   } else await fs.rm(workspace, { recursive: true, force: true, maxRetries: 3 });
 }
 
-module.exports = { inside, noLinks, directory, regularFile, scanTree, validateLocations, sha256, copyPrivate, copyExclusive, publishFile, cleanupWorkspace };
+module.exports = { inside, noLinks, directory, regularFile, scanTree, validateLocations, sha256, copyPrivate, copyExclusive, publishFile, publishDirectory, cleanupWorkspace };

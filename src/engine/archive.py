@@ -99,7 +99,14 @@ def extract(filename, destination, max_bytes):
                     output.write(chunk)
             if copied != member.file_size:
                 raise ValueError("Truncated archive member")
-            os.chmod(target, 0o700 if member.external_attr >> 16 & 0o111 else 0o600)
+            if os.name != "nt":
+                mode = member.external_attr >> 16
+                if mode & 0o111 or "/bin/" in member.filename or member.filename.startswith("bin/"):
+                    os.chmod(target, 0o755)
+                else:
+                    os.chmod(target, 0o644)
+            else:
+                os.chmod(target, 0o700 if member.external_attr >> 16 & 0o111 else 0o600)
     return {"files": len(members), "bytes": total}
 
 
@@ -144,7 +151,12 @@ def verify(filename, spec_file, shell_only=False):
                 raise ValueError("IPA executable is not Mach-O")
         shell_info = read_ini(read_small(archive, names, base + "dm/shell_info.txt"))
         for key, expected in spec["shellInfo"].items():
-            if shell_info.get(key) != expected:
+            actual = shell_info.get(key)
+            if actual is None and key == "SHADER_CHAIN":
+                actual = shell_info.get("CHAIN")
+            if actual is None and key == "CHAIN":
+                actual = shell_info.get("SHADER_CHAIN")
+            if actual != expected:
                 raise ValueError("Shell metadata mismatch: " + key)
         manifest = read_small(archive, names, base + "dm/shell_manifest.txt").decode("utf-8").splitlines()
         manifest = [name.strip() for name in manifest if name.strip()]
@@ -162,6 +174,10 @@ def verify(filename, spec_file, shell_only=False):
                     present = full in names and not is_directory(names[full]) and names[full].file_size > 0
                 if not present:
                     raise ValueError("Required generated member missing or empty: " + name)
+            if spec.get("legacy"):
+                astc_pack_json = base + "romfs_overlay_astc/pack.json"
+                if astc_pack_json not in names or is_directory(names[astc_pack_json]) or names[astc_pack_json].file_size == 0:
+                    raise ValueError("Required legacy ASTC overlay member missing or empty: romfs_overlay_astc/pack.json")
             guest = names[base + "Frameworks/Guest.framework/Guest"]
             with archive.open(guest) as source:
                 if source.read(4) != b"\xcf\xfa\xed\xfe":

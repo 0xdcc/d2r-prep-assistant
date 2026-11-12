@@ -1,5 +1,9 @@
 node_modules/
 artifacts/
-.cache/
-__pycache__/
+.npm-cache/
 *.log
+__pycache__/
+.DS_Store
+.codex-run.jsonl
+.codex-run-*.jsonl
+.cache/

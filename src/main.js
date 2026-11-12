@@ -14,11 +14,20 @@ const { directory, noLinks, regularFile } = require('./engine/paths');
 const { redact, exportNewLog } = require('./engine/log');
 
 const LINKS = Object.freeze({
-  signing: 'https://sideloadly.io/',
+  gameFiles: 'https://d2rmobileguide.com/guides/prerequisites',
+  signing: 'https://d2rmobileguide.com/guides/ios-install#step-2-sign-and-install-the-ipa',
+  olderSystems: 'https://d2rmobileguide.com/compatibility',
+  legacyDevices: 'https://d2rmobileguide.com/downloads#legacy-pack',
+  androidSetup: 'https://d2rmobileguide.com/android',
   python: 'https://www.python.org/downloads/',
-  dotnet: 'https://dotnet.microsoft.com/en-us/download/dotnet',
+  dotnet: 'https://dotnet.microsoft.com/download/dotnet/10.0',
+  compiler: 'https://clang.llvm.org/',
+  cmake: 'https://cmake.org/download/',
+  spirvCross: 'https://d2rmobileguide.com/windows-assistant',
+  astcenc: 'https://d2rmobileguide.com/downloads#legacy-pack',
+  vulkanTools: 'https://d2rmobileguide.com/android',
   llvm: 'https://releases.llvm.org/',
-  spirv: 'https://github.com/KhronosGroup/SPIRV-Cross/releases/tag/vulkan-sdk-1.4.357.0',
+  spirv: 'https://d2rmobileguide.com/windows-assistant',
   upstream: 'https://github.com/d2r-mobile/d2r-mobile',
   xcode: 'https://developer.apple.com/xcode/'
 });
@@ -60,24 +69,24 @@ async function chooseFolder(kind) {
 async function request(method, payload) {
   validateRequest(method, payload);
   switch (method) {
-    case 'bootstrap': return { product: 'D2R Prep Assistant', version: app.getVersion(), platform: process.platform, arch: process.arch, cache, matrix: targetMatrix(process.platform, process.arch, manifest), manifest: { status: manifest.status, reason: manifest.reason || '', targets: manifest.targets.map(target => ({ id: target.id, commit: target.sourceCommit, sourceBytes: target.source.bytes, shellBytes: target.shell.bytes })) }, state: engine.snapshot() };
+    case 'bootstrap': return { product: 'D2R Prep Assistant', version: app.getVersion(), platform: process.platform, arch: process.arch, cache, matrix: targetMatrix(process.platform, process.arch, manifest), manifest: { status: manifest.status, reason: manifest.reason || '', targets: manifest.targets.map(target => ({ id: target.id, kind: target.kind, label: target.label, commit: target.sourceCommit, sourceBytes: target.source?.bytes, shellBytes: target.shell?.bytes })) }, state: engine.snapshot() };
     case 'chooseFolder': return chooseFolder(payload.kind);
     case 'startJob': {
       assert(!pickerBusy, 'BUSY', 'Close the folder dialog first.');
-      return engine.start(payload.kind, { target: payload.target, input: selected(payload.inputToken, 'input'), output: selected(payload.outputToken, 'output'), consent: payload.consent });
+      return engine.start(payload.kind, { target: payload.target, device: payload.device || 'current', input: selected(payload.inputToken, 'input'), output: selected(payload.outputToken, 'output'), consent: payload.consent });
     }
     case 'cancel': return engine.cancel();
     case 'snapshot': return engine.snapshot();
     case 'openHelp': {
-      const result = await dialog.showMessageBox(window, { type: 'info', title: 'Open official website / 打开官方网站', message: LINKS[payload.id], detail: 'This opens your browser. No local files are uploaded. Signing is separate; certificates may expire. / 将打开浏览器，不上传本地文件。签名独立进行，证书可能到期。', buttons: ['Cancel / 取消', 'Open / 打开'], defaultId: 0, cancelId: 0 });
-      if (result.response === 1) await shell.openExternal(LINKS[payload.id]);
+      const result = await dialog.showMessageBox(window, { type: 'info', title: 'Open official website / 打开官方网站', message: LINKS[payload.id] || manifest.helpUrls?.[payload.id], detail: 'This opens your browser. No local files are uploaded. Signing is separate; certificates may expire. / 将打开浏览器，不上传本地文件。签名独立进行，证书可能到期。', buttons: ['Cancel / 取消', 'Open / 打开'], defaultId: 0, cancelId: 0 });
+      if (result.response === 1) await shell.openExternal(LINKS[payload.id] || manifest.helpUrls?.[payload.id]);
       return { opened: result.response === 1 };
     }
     case 'revealResult': {
       const state = engine.snapshot();
-      assert(!engine.busy && state.status === 'succeeded' && state.kind === 'prepare' && state.result?.path, 'NO_RESULT', 'No verified IPA is available.');
-      await regularFile(state.result.path);
-      shell.showItemInFolder(state.result.path);
+      assert(!engine.busy && state.status === 'succeeded' && state.kind === 'prepare' && state.result?.path, 'NO_RESULT', 'No verified result is available.');
+      const targetPath = state.result.bundlePath || state.result.path;
+      shell.showItemInFolder(targetPath);
       return { revealed: true };
     }
     case 'exportLog': {

@@ -40,22 +40,84 @@ async function inspectBuildManifest(filename, resourceSizes, signal) {
 async function validateGame(root, target, { signal, onFile = () => {} } = {}) {
   const tree = await scanTree(root, { signal });
   const names = new Set(tree.entries.filter(entry => !entry.directory).map(entry => entry.path.split(path.sep).join('/')));
-  assert(['main', 'sdk', 'subsdk0'].every(name => names.has(`ExeFS/${name}`)) && names.has('RomFS/data/build_manifest.psv'), 'GAME_MISSING', 'Select the folder containing ExeFS/{main,sdk,subsdk0} and RomFS/data/build_manifest.psv. NSP/XCI/IPA are not inputs.');
   assert(!tree.entries.some(entry => /(^|[\\/])(save|saves|savedgames|saved games)([\\/]|$)/i.test(entry.path)), 'SAVES_PRESENT', 'Keep saves outside the input folder; saves are never processed.');
   assert(target, 'GAME_VERSION_UNVERIFIED', 'No reviewed game version contract is available.');
-  for (const [index, file] of target.game.programs.entries()) {
-    const filename = await regularFile(path.join(tree.root, file.path));
-    assert(await sha256(filename, signal) === file.sha256, 'GAME_VERSION', `Wrong version or corrupted program: ${file.path}. Expected Switch ${target.game.version} / ${target.game.internalVersion} + expansion.`);
-    onFile({ completed: index + 1, total: 3, name: file.path });
+
+  const isLegacyPack = target.kind === 'legacy-pack';
+  let romfsPrefix = '';
+  let romfsSubdir = '';
+
+  if (isLegacyPack) {
+    if (names.has('RomFS/data/build_manifest.psv')) {
+      romfsPrefix = 'RomFS/data';
+      romfsSubdir = 'RomFS';
+    } else if (names.has('data/build_manifest.psv')) {
+      romfsPrefix = 'data';
+      romfsSubdir = '';
+    } else {
+      assert(false, 'GAME_MISSING', 'Select the folder containing RomFS/data/build_manifest.psv or data/build_manifest.psv. NSP/XCI/IPA are not inputs.');
+    }
+  } else {
+    assert(['main', 'sdk', 'subsdk0'].every(name => names.has(`ExeFS/${name}`)) && names.has('RomFS/data/build_manifest.psv'), 'GAME_MISSING', 'Select the folder containing ExeFS/{main,sdk,subsdk0} and RomFS/data/build_manifest.psv. NSP/XCI/IPA are not inputs.');
+    romfsPrefix = 'RomFS/data';
+    romfsSubdir = 'RomFS';
   }
+
+  let programHashesVerified = 0;
+  const hasExeFS = ['main', 'sdk', 'subsdk0'].every(name => names.has(`ExeFS/${name}`));
+  if (hasExeFS || !isLegacyPack) {
+    for (const [index, file] of target.game.programs.entries()) {
+      const filename = await regularFile(path.join(tree.root, file.path));
+      assert(await sha256(filename, signal) === file.sha256, 'GAME_VERSION', `Wrong version or corrupted program: ${file.path}. Expected Switch ${target.game.version} / ${target.game.internalVersion} + expansion.`);
+      onFile({ completed: index + 1, total: 3, name: file.path });
+    }
+    programHashesVerified = 3;
+  }
+
   const resourceSizes = new Map();
-  for (const entry of tree.entries.filter(entry => !entry.directory && /^RomFS[\\/]data[\\/]\d{2}-\d{8}\.data$/.test(entry.path))) resourceSizes.set(path.basename(entry.path), entry.bytes);
-  for (const name of target.game.resources) assert(resourceSizes.get(name) > 0, 'GAME_RESOURCE', `Required resource missing or empty: RomFS/data/${name}`);
-  const records = await inspectBuildManifest(path.join(tree.root, 'RomFS/data/build_manifest.psv'), resourceSizes, signal);
-  const wanted = new Set([...target.game.programs.map(file => file.path), 'RomFS/data/build_manifest.psv', ...[...resourceSizes.keys()].map(name => `RomFS/data/${name}`)]);
-  const directories = new Set(['ExeFS', 'RomFS', 'RomFS/data']);
+  const resRegex = new RegExp(`^${romfsPrefix.replace('/', '[\\\\/]')}[\\\\/](\\d{2}-\\d{8}\\.data)$`);
+  for (const entry of tree.entries.filter(entry => !entry.directory)) {
+    const match = entry.path.match(resRegex);
+    if (match) resourceSizes.set(match[1], entry.bytes);
+  }
+  for (const name of target.game.resources) {
+    assert(resourceSizes.get(name) > 0, 'GAME_RESOURCE', `Required resource missing or empty: ${romfsPrefix}/${name}`);
+  }
+  const manifestPsv = path.join(tree.root, ...romfsPrefix.split('/'), 'build_manifest.psv');
+  const records = await inspectBuildManifest(manifestPsv, resourceSizes, signal);
+
+  const wanted = new Set([
+    ...(hasExeFS ? target.game.programs.map(file => file.path) : []),
+    `${romfsPrefix}/build_manifest.psv`,
+    ...[...resourceSizes.keys()].map(name => `${romfsPrefix}/${name}`)
+  ]);
+  if (names.has(`${romfsPrefix}/.build.config`)) {
+    wanted.add(`${romfsPrefix}/.build.config`);
+  }
+
+  const directories = new Set();
+  for (const item of wanted) {
+    const parts = item.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      directories.add(parts.slice(0, i).join('/'));
+    }
+  }
+
   const entries = tree.entries.filter(entry => (entry.directory ? directories : wanted).has(entry.path.split(path.sep).join('/')));
-  return { ...tree, entries, bytes: entries.filter(entry => !entry.directory).reduce((total, entry) => total + entry.bytes, 0), verification: { programHashesVerified: 3, requiredResourcesPresent: 18, manifestRecordsChecked: records, resourceCryptographicVerification: false, note: 'Upstream publishes no complete archive hashes; resource presence and manifest extents checked, not full resource authenticity. Upstream validates derived content during generation.' } };
+  return {
+    ...tree,
+    entries,
+    romfsPrefix,
+    romfsSubdir,
+    bytes: entries.filter(entry => !entry.directory).reduce((total, entry) => total + entry.bytes, 0),
+    verification: {
+      programHashesVerified,
+      requiredResourcesPresent: 18,
+      manifestRecordsChecked: records,
+      resourceCryptographicVerification: false,
+      note: 'Upstream publishes no complete archive hashes; resource presence and manifest extents checked, not full resource authenticity. Upstream validates derived content during generation.'
+    }
+  };
 }
 
 module.exports = { validateGame, inspectBuildManifest };

@@ -6,7 +6,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { temporary, manifest } = require('./helpers');
 const { validateGame, inspectBuildManifest } = require('../src/engine/game');
-const { validateLocations, scanTree, publishFile, copyPrivate, inside } = require('../src/engine/paths');
+const { validateLocations, scanTree, publishFile, publishDirectory, copyPrivate, inside } = require('../src/engine/paths');
 const { redact, JobLog } = require('../src/engine/log');
 const { copyExclusive, cleanupWorkspace } = require('../src/engine/paths');
 const { exportNewLog } = require('../src/engine/log');
@@ -161,4 +161,47 @@ test('redacted logs are disk/ring bounded and hide paths, secrets and URLs', asy
   const content = await fs.readFile(filename, 'utf8');
   assert(!content.includes(root)); assert(!content.includes('abcd')); assert(!content.includes('https://'));
   assert.equal(redact('password=123'), 'password=[REDACTED]');
+});
+
+test('legacy-pack validates RomFS-only input (parent or direct data/) without ExeFS', async context => {
+  const legacyTarget = manifest().targets.find(t => t.id === 'legacy-pack');
+  const root1 = await temporary(context);
+  await fs.mkdir(path.join(root1, 'RomFS/data'), { recursive: true });
+  const header = 'FileId|KeyLayout|Chunk|Archive|CKey|CSize|EKey|ESize|Encoding|Path|Flags\n';
+  const row = `1|0|0|1|${'a'.repeat(32)}|4|${'0'.repeat(32)}|4|n|data:synthetic-protocol-only|0\n`;
+  await fs.writeFile(path.join(root1, 'RomFS/data/build_manifest.psv'), header + row);
+  for (const res of legacyTarget.game.resources) {
+    await fs.writeFile(path.join(root1, 'RomFS/data', res), '1234');
+  }
+  const tree1 = await validateGame(root1, legacyTarget);
+  assert.equal(tree1.romfsSubdir, 'RomFS');
+  assert.equal(tree1.verification.programHashesVerified, 0);
+
+  // Direct RomFS folder
+  const root2 = await temporary(context);
+  await fs.mkdir(path.join(root2, 'data'), { recursive: true });
+  await fs.writeFile(path.join(root2, 'data/build_manifest.psv'), header + row);
+  for (const res of legacyTarget.game.resources) {
+    await fs.writeFile(path.join(root2, 'data', res), '1234');
+  }
+  const tree2 = await validateGame(root2, legacyTarget);
+  assert.equal(tree2.romfsSubdir, '');
+
+  // IPA target still strictly requires ExeFS
+  const ipaTarget = manifest().targets.find(t => t.id === 'ios26');
+  await assert.rejects(validateGame(root1, ipaTarget), { code: 'GAME_MISSING' });
+});
+
+test('publishDirectory creates directory exclusively and refuses overwriting existing folder', async context => {
+  const root = await temporary(context);
+  const staged = path.join(root, 'staged-dir');
+  const output = path.join(root, 'output');
+  await fs.mkdir(path.join(staged, 'nested'), { recursive: true });
+  await fs.mkdir(output);
+  await fs.writeFile(path.join(staged, 'nested', 'file.txt'), 'hello');
+
+  const dest = await publishDirectory(staged, output, 'my-pack-123');
+  assert.equal(await fs.readFile(path.join(dest, 'nested', 'file.txt'), 'utf8'), 'hello');
+  await assert.rejects(publishDirectory(staged, output, 'my-pack-123'), { code: 'EEXIST', recoveryPath: staged });
+  await assert.rejects(publishDirectory(staged, output, '../escape'), { code: 'OUTPUT_NAME' });
 });

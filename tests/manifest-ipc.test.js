@@ -9,11 +9,11 @@ const { manifest } = require('./helpers');
 const { packEnvironment, localEnvironment } = require('../src/engine/environment');
 const path = require('node:path');
 
-test('real production pins enable both iOS targets on Windows and Mac only', () => {
+test('real production pins enable all 4 targets on Windows and Mac only', () => {
   const value = manifest();
   for (const host of [['win32', 'x64'], ['darwin', 'arm64'], ['darwin', 'x64']]) {
     const matrix = targetMatrix(...host, value);
-    assert.equal(matrix.targets.filter(target => target.enabled).length, 2);
+    assert.equal(matrix.targets.filter(target => target.enabled).length, 4);
     assert.equal(matrix.nativeMac.enabled, false);
   }
   assert.equal(targetMatrix('linux', 'x64', value).hostSupported, false);
@@ -22,6 +22,7 @@ test('real production pins enable both iOS targets on Windows and Mac only', () 
   assert.equal(value.targets[0].game.resources.length, 18);
   assert.equal(value.targets[0].outputGameManifest, undefined);
   assert(value.portableTools.every(record => record.bytes > 0 && record.sha256));
+  assert(value.helpUrls && Object.keys(value.helpUrls).length >= 12);
 });
 
 test('manifest rejects changed repository, branch source and wrong program contract', () => {
@@ -39,20 +40,29 @@ test('publisher URLs and manifest paths cannot escape allowlists', () => {
 test('IPC has exact fields, fixed help IDs and native-picker tokens, never renderer commands', () => {
   const payload = { kind: 'prepare', target: 'ios18', inputToken: crypto.randomUUID(), outputToken: null, consent: true };
   assert.equal(validateRequest('startJob', payload), payload);
-  for (const invalid of [{ ...payload, command: 'rm -rf /' }, { ...payload, inputToken: '/tmp/path' }, { ...payload, kind: 'exec' }, { ...payload, consent: 'true' }, { ...payload, target: 'nativeMac' }]) assert.throws(() => validateRequest('startJob', invalid));
+  for (const target of ['ios26', 'ios18', 'legacy-pack', 'android']) {
+    assert.ok(validateRequest('startJob', { ...payload, target }));
+  }
+  assert.ok(validateRequest('startJob', { ...payload, device: 'legacy' }));
+  assert.ok(validateRequest('startJob', { ...payload, device: 'current' }));
+  for (const invalid of [{ ...payload, command: 'rm -rf /' }, { ...payload, inputToken: '/tmp/path' }, { ...payload, kind: 'exec' }, { ...payload, consent: 'true' }, { ...payload, target: 'nativeMac' }, { ...payload, device: 'unsupported' }]) assert.throws(() => validateRequest('startJob', invalid));
   assert.throws(() => validateRequest('openHelp', { id: 'https://evil.test' }));
+  assert.ok(validateRequest('openHelp', { id: 'legacyDevices' }));
+  assert.ok(validateRequest('openHelp', { id: 'androidSetup' }));
   assert.throws(() => validateRequest('__proto__', {}));
   assert.throws(() => validateRequest('bootstrap', []));
 });
 
 test('packer uses managed DM_ROOT, no-Metal and complete tool PATH', () => {
   const workspace = path.resolve('/tmp/工作 空间');
-  const inspected = { python: path.resolve('/tmp/venv/bin/python'), tools: { python: path.resolve('/tmp/python/bin/python'), compiler: path.resolve('/tmp/llvm/bin/clang'), dotnet: path.resolve('/tmp/dotnet/dotnet'), spirv: path.resolve('/tmp/spirv/spirv-cross') } };
+  const inspected = { python: path.resolve('/tmp/venv/bin/python'), tools: { python: path.resolve('/tmp/python/bin/python'), compiler: path.resolve('/tmp/llvm/bin/clang'), dotnet: path.resolve('/tmp/dotnet/dotnet'), spirv: path.resolve('/tmp/spirv/spirv-cross'), astcenc: path.resolve('/tmp/astcenc/bin/astcenc'), glslc: path.resolve('/tmp/vk/bin/glslc') } };
   const environment = packEnvironment(inspected, workspace);
   assert.equal(environment.DM_ROOT, path.join(workspace, 'dm-root'));
   assert.equal(environment.D2RM_NO_METAL, '1');
   assert.equal(environment.DOTNET_ROOT, path.dirname(inspected.tools.dotnet));
   assert.equal(environment.CC, inspected.tools.compiler);
+  assert.equal(environment.ASTCENC, inspected.tools.astcenc);
+  assert.equal(environment.GLSLC, inspected.tools.glslc);
   assert(environment.PATH.startsWith(path.dirname(inspected.python)));
   assert.equal(localEnvironment(workspace, { compiler: '/usr/bin/gcc' }).CXX, '/usr/bin/g++');
 });

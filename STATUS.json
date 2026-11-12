@@ -1,19 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.1.0",
-  "date": "2026-10-17",
-  "upstream": { "status": "PINNED_PARENT_VERIFIED", "commit": "9de307ecaff42b3c9d45e58992c848ee89b8f6a1", "product": "3.3.94012-r44", "targets": ["ios18", "ios26"] },
-  "engine": "IMPLEMENTED_41_TESTS_PASS_0_SKIPPED",
-  "renderer": "REAL_WINDOWS_ELECTRON_UI_SMOKE_PASS_TEST_BRIDGE_IN_TESTS_ONLY",
-  "environment": { "automatic": ["portable Python 3.12", "five hash-locked wheels", ".NET SDK 10", "Windows LLVM-MinGW", "CMake/Ninja and pinned SPIRV-Cross source build"], "macCompiler": "APPLE_COMMAND_LINE_TOOLS_REQUIRED", "windowsParentToolchainQA": "ACTUAL_APP_ENVIRONMENT_ENGINE_PASS_COLD_TOOLS_AND_WARM_CACHE", "windowsPythonChildPath": "PASS_CLANG_DOTNET_SPIRV_CROSS_PRIVATE_PATH", "networkQualification": "PUBLISHER_HASH_VERIFIED_PRESEEDED_ARCHIVES_NOT_FULL_COLD_NETWORK" },
-  "verification": { "programs": "THREE_UPSTREAM_SHA256", "resources": "PRESENCE_NONZERO_PSV_EXTENTS_NOT_FULL_CRYPTOGRAPHIC_AUTHENTICITY", "output": "REAL_PACK_INFO_PRODUCT_SHELL_METADATA_MANIFEST_PLIST_MACHO_CRC" },
+  "version": "0.2.0",
+  "date": "2026-11-12",
+  "upstream": {
+    "status": "PINNED_V2_3_0",
+    "tag": "v2.3.0",
+    "commit": "6a3f1ee29ac6f27cd26cdd9eea1d29696106dac1",
+    "product": "3.3.94012-r45",
+    "targets": ["ios26", "ios18", "legacy-pack", "android"]
+  },
+  "engine": "IMPLEMENTED_47_TESTS_47_PASS_0_FAIL",
+  "renderer": "REAL_ELECTRON_UI_WIZARD_4_WORKFLOWS_TESTED",
+  "environment": {
+    "automatic": [
+      "portable Python 3.12",
+      "five hash-locked wheels",
+      ".NET SDK 10",
+      "Windows LLVM-MinGW",
+      "CMake/Ninja",
+      "pinned SPIRV-Cross vulkan-sdk-1.4.363.0 source build",
+      "ARM astcenc 5.2.0",
+      "vk-shader-tools (shaderc v2026.4, SPIRV-Tools 1.4.363.0, glslang 16.6.0)"
+    ],
+    "macCompiler": "APPLE_COMMAND_LINE_TOOLS_REQUIRED",
+    "selectiveDependencies": true
+  },
+  "verification": {
+    "programs": "THREE_UPSTREAM_SHA256_FOR_IPA_AND_ANDROID_OPTIONAL_FOR_LEGACY_PACK",
+    "resources": "PRESENCE_NONZERO_PSV_EXTENTS_NOT_FULL_CRYPTOGRAPHIC_AUTHENTICITY",
+    "output": "REAL_IPA_VERIFIER_AND_ANDROID_PACK_VERIFIER_AND_LEGACY_PACK_VERIFIER"
+  },
   "gameBuild": "NOT_TESTED_NO_OWN_GAME_FILES",
   "deviceExecution": "NOT_TESTED",
-  "macNativeExecution": "NOT_TESTED_NO_MAC",
-  "nativeMacGameBackend": "NOT_IMPLEMENTED_V0_1",
-  "legacyTextureBackend": "NOT_IMPLEMENTED_V0_1",
-  "desktopPackaging": "BUILT_UNSIGNED_WIN32_X64_DARWIN_ARM64",
-  "packagedWindowsUI": "PASS_REAL_WINDOWS_BOOTSTRAP_LANGUAGE_NAVIGATION_IPC_ZERO_ERRORS",
+  "macNativeExecution": "VERIFIED_M6_MACOS_27_ADHOC_SIGNED_ENGINE_READY",
+  "nativeMacGameBackend": "NOT_IMPLEMENTED_V0_2",
+  "legacyTextureBackend": "IMPLEMENTED_ASTCENC_5_2_0_THOROUGH",
+  "androidImportBackend": "IMPLEMENTED_D2RM_ANDROID_V2_3_0",
+  "desktopPackaging": "PACKAGED_AND_VERIFIED_WIN32_X64_AND_DARWIN_ARM64",
   "signing": "UNSIGNED_NOT_NOTARIZED",
   "syntheticFixtures": "TEST_ONLY_PROTOCOL_NOT_GAME_OR_PLAYABLE_OUTPUT"
 }

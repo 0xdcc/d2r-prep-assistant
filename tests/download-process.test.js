@@ -9,6 +9,7 @@ const { temporary, manifest } = require('./helpers');
 const { downloadVerified } = require('../src/engine/download');
 const { runProcess, childEnvironment } = require('../src/engine/process');
 const { JobEngine } = require('../src/engine/jobs');
+const { inspectEnvironment } = require('../src/engine/environment');
 
 test('Windows lifecycle never calls taskkill after normal or nonzero child exit', async context => {
   const root = await temporary(context);
@@ -115,4 +116,24 @@ test('single job concurrency and cancellation cleanup work with no simulated gam
   assert.deepEqual(await fs.readdir(path.join(root, 'cache/jobs')), []);
   engine.start('environment', { target: 'ios18', consent: false });
   await engine.wait(); assert.equal(engine.snapshot().code, 'CONSENT');
+});
+
+test('inspectEnvironment selectively checks dependencies by target kind and device', async context => {
+  const root = await temporary(context);
+  const m = manifest();
+
+  const legacyTarget = m.targets.find(t => t.id === 'legacy-pack');
+  const legacyEnv = await inspectEnvironment(root, legacyTarget, {});
+  assert.deepEqual(legacyEnv.dependencies.map(d => d.id), ['python', 'astcenc', 'pythonPackages']);
+
+  const androidTarget = m.targets.find(t => t.id === 'android');
+  const androidEnv = await inspectEnvironment(root, androidTarget, {});
+  assert.deepEqual(androidEnv.dependencies.map(d => d.id), ['python', 'dotnet', 'compiler', 'vkShaderTools', 'pythonPackages']);
+
+  const iosTarget = m.targets.find(t => t.id === 'ios26');
+  const iosCurrentEnv = await inspectEnvironment(root, iosTarget, { device: 'current' });
+  assert.deepEqual(iosCurrentEnv.dependencies.map(d => d.id), ['python', 'dotnet', 'compiler', 'spirv', 'pythonPackages']);
+
+  const iosLegacyEnv = await inspectEnvironment(root, iosTarget, { device: 'legacy' });
+  assert.deepEqual(iosLegacyEnv.dependencies.map(d => d.id), ['python', 'dotnet', 'compiler', 'spirv', 'astcenc', 'pythonPackages']);
 });

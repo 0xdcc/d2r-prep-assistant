@@ -5,10 +5,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { temporary, python, zipFixture, manifest } = require('./helpers');
-const { extractArchive, verifyIpa } = require('../src/engine/archive');
+const { extractArchive, verifyIpa, verifyAndroidPack, verifyLegacyPack } = require('../src/engine/archive');
 const { extractTarGzip } = require('../src/engine/tar');
 const { runProcess } = require('../src/engine/process');
 const { sha256 } = require('../src/engine/paths');
+const crypto = require('node:crypto');
 
 test('ZIP members beyond 300 characters extract without Windows registry long-path policy', async context => {
   const root = await temporary(context); const interpreter = await python();
@@ -34,7 +35,7 @@ with patch.object(helper.os, "name", "nt"), patch.object(helper.os, "path", ntpa
     assert helper.filesystem_path(r"\\?\UNC\server\share\nested") == r"\\?\UNC\server\share\nested"
     assert helper.filesystem_path(r"\\?\C:\private\nested") == r"\\?\C:\private\nested"
 `;
-  await runProcess(interpreter, ['-I', '-c', script, path.resolve(__dirname, '../src/engine/archive.py')], { cwd: root });
+  await runProcess(interpreter, ['-I', '-B', '-c', script, path.resolve(__dirname, '../src/engine/archive.py')], { cwd: root });
 });
 
 test('ZIP directory mode works without slash; ambiguous regular/directory entries fail', async context => {
@@ -109,21 +110,28 @@ test('output verifier rejects missing, corrupt and clean-shell-only artifacts', 
 });
 
 test('synthetic output-verifier protocol requires actual INI PRODUCT and every shell member, not JSON', async context => {
-  const root = await temporary(context); const interpreter = await python(); const target = manifest().targets[0];
+  const root = await temporary(context); const interpreter = await python(); const target = manifest().targets.find(t => t.id === 'ios26');
   const base = 'Payload/DmIOS.app/';
-  const plist = '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>DmIOS</string><key>CFBundleIdentifier</key><string>org.d2rmobile.app</string><key>MinimumOSVersion</key><string>18.0</string></dict></plist>';
+  const plist = `<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>DmIOS</string><key>CFBundleIdentifier</key><string>org.d2rmobile.app</string><key>MinimumOSVersion</key><string>${target.minimumOS}</string></dict></plist>`;
   const entries = [
     { name: base + 'Info.plist', data: plist },
     { name: base + 'DmIOS', base64: Buffer.concat([Buffer.from([0xcf, 0xfa, 0xed, 0xfe]), Buffer.alloc(60)]).toString('base64') },
     { name: base + 'dm/shell_info.txt', data: Object.entries(target.shellInfo).map(([key, value]) => `${key}=${value}`).join('\n') },
     { name: base + 'dm/shell_manifest.txt', data: target.shellManifest.join('\n') },
     { name: base + 'dm/pack_info.txt', data: `PRODUCT=${target.shellInfo.PRODUCT}\n` },
-    ...target.shellManifest.map(name => ({ name: base + name + (name.endsWith('/') ? 'synthetic-protocol-only.txt' : ''), data: 'synthetic verifier protocol, NOT a game artifact' })),
+    ...target.shellManifest.filter(name => name !== 'Frameworks/Guest.framework/Guest').map(name => ({ name: base + name + (name.endsWith('/') ? 'synthetic-protocol-only.txt' : ''), data: 'synthetic verifier protocol, NOT a game artifact' })),
     { name: base + 'Frameworks/Guest.framework/Guest', base64: Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0, 0, 0, 0]).toString('base64') }
   ];
   const archive = await zipFixture(root, entries, 'synthetic-verifier-protocol.zip');
   const result = await verifyIpa(interpreter, archive, target, { cwd: root });
   assert.equal(result.packProductVerified, true);
+  await assert.rejects(verifyIpa(interpreter, archive, target, { cwd: root, legacy: true }));
+
+  const legacyEntries = [...entries, { name: base + 'romfs_overlay_astc/pack.json', data: '{"name":"00-00000008.data"}' }];
+  const legacyArchive = await zipFixture(root, legacyEntries, 'synthetic-legacy-protocol.zip');
+  const legacyResult = await verifyIpa(interpreter, legacyArchive, target, { cwd: root, legacy: true });
+  assert.equal(legacyResult.packProductVerified, true);
+
   entries.find(entry => entry.name.endsWith('dm/pack_info.txt')).data = 'PRODUCT=wrong\n';
   const mismatch = await zipFixture(root, entries, 'synthetic-wrong-product.zip');
   await assert.rejects(verifyIpa(interpreter, mismatch, target, { cwd: root }));
@@ -134,6 +142,7 @@ test('synthetic output-verifier protocol requires actual INI PRODUCT and every s
 test('real pinned clean shells match metadata but cannot pass completed-output verification', async context => {
   const root = await temporary(context); const interpreter = await python();
   for (const target of manifest().targets) {
+    if (target.kind !== 'ipa' || !target.shell) continue;
     const archive = path.resolve(__dirname, `../evidence/upstream/${target.id}.zip`);
     if (!await fs.stat(archive).catch(() => null)) { context.skip('Optional parent-owned upstream archives unavailable.'); return; }
     assert.equal(await sha256(archive), target.shell.sha256);
@@ -174,4 +183,55 @@ test('real approved Mac Python and .NET tar archives remain extractable', async 
     assert(result.files > 0);
     assert((await fs.stat(path.join(destination, tool.executable))).isFile());
   }
+});
+
+test('verifyAndroidPack validates output structure, patched binaries, shaders and overlays', async context => {
+  const root = await temporary(context);
+  const androidDir = path.join(root, 'android');
+  await fs.mkdir(path.join(androidDir, 'out'), { recursive: true });
+  await fs.mkdir(path.join(androidDir, 'shaders'), { recursive: true });
+  await fs.mkdir(path.join(androidDir, 'overlay'), { recursive: true });
+  await fs.mkdir(path.join(androidDir, 'overlay_variants'), { recursive: true });
+
+  await fs.writeFile(path.join(androidDir, 'pack_info.txt'), 'PRODUCT=3.3.94012-r45\nTARGET=android\n');
+  await fs.writeFile(path.join(androidDir, 'derived.tsv'), 'header\nrow1\n');
+  for (const name of ['main.patched.bin', 'sdk.patched.bin', 'subsdk0.patched.bin', 'main.gates.tsv']) {
+    await fs.writeFile(path.join(androidDir, 'out', name), 'synthetic binary');
+  }
+  await fs.writeFile(path.join(androidDir, 'shaders', 'query_timestamp.xgs'), 'xgs');
+  for (let i = 0; i < 105; i++) {
+    await fs.writeFile(path.join(androidDir, 'shaders', `s_${i}.xgs`), 'xgs');
+  }
+  await fs.writeFile(path.join(androidDir, 'overlay', 'layout.json'), '{}');
+  await fs.writeFile(path.join(androidDir, 'overlay_variants', 'variant.json'), '{}');
+
+  const res = await verifyAndroidPack(androidDir);
+  assert.equal(res.verified, true);
+  assert.equal(res.shadersCount, 106);
+
+  await fs.writeFile(path.join(androidDir, 'pack_info.txt'), 'PRODUCT=wrong\nTARGET=android\n');
+  await assert.rejects(verifyAndroidPack(androidDir), { code: 'VERIFY_ANDROID' });
+});
+
+test('verifyLegacyPack validates pack.json, pack_index.tsv, manifest.json and data archive sha256', async context => {
+  const root = await temporary(context);
+  const packDir = path.join(root, 'legacy-pack');
+  const dataDir = path.join(packDir, 'Legacy Device Pack', 'data');
+  await fs.mkdir(dataDir, { recursive: true });
+
+  const dataBytes = Buffer.from('synthetic astc pack data payload');
+  const dataHash = crypto.createHash('sha256').update(dataBytes).digest('hex');
+  const info = { name: '00-00000008.data', size: dataBytes.length, sha256: dataHash };
+
+  await fs.writeFile(path.join(dataDir, '00-00000008.data'), dataBytes);
+  await fs.writeFile(path.join(packDir, 'pack.json'), JSON.stringify(info));
+  await fs.writeFile(path.join(packDir, 'pack_index.tsv'), '# pack\t00-00000008.data\n');
+  await fs.writeFile(path.join(packDir, 'Legacy Device Pack', 'manifest.json'), JSON.stringify({ files: [info] }));
+
+  const res = await verifyLegacyPack(packDir);
+  assert.equal(res.verified, true);
+  assert.equal(res.sha256, dataHash);
+
+  await fs.writeFile(path.join(dataDir, '00-00000008.data'), 'corrupted');
+  await assert.rejects(verifyLegacyPack(packDir), { code: 'VERIFY_LEGACY' });
 });
